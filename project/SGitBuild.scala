@@ -1,7 +1,7 @@
 import sbt._
 import sbt.Keys._
 
-object SgitBuild extends Build {
+object SGitBuild extends Build {
 
   lazy val sgit = Project(
     id = "sgit",
