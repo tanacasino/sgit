@@ -174,11 +174,10 @@ class SGit(path: String) {
   // NOTE Too much slow version
   def getLastModifiedCommitFromPathsSlow(commit: RevCommit, paths: List[String]): Map[String, String] = {
     open() { git =>
-      val lastModifiedCommitMap = paths.map { path =>
+      paths.map { path =>
         val c = git.log.add(commit).setMaxCount(1).addPath(path).call.iterator.next
         (path -> c.getName)
-      }
-      lastModifiedCommitMap.toMap
+      }.toMap
     }
   }
 
