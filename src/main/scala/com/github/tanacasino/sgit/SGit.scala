@@ -10,6 +10,7 @@ import org.eclipse.jgit.treewalk.filter.PathFilter
 
 import scala.collection.JavaConverters._
 
+
 object SGit {
 
   def main(args: Array[String]): Unit = {
@@ -21,6 +22,7 @@ object SGit {
     println(sgit.resolve(headCommitId)) // => AnyObjectId
     println(sgit.resolve("hoge")) // => null
 
+    /*
     println(s"${sgit.countCommit(headCommitId)}")
     sgit.resolve(headCommitId).map { headCommitObjectId =>
       println(s"${sgit.countCommit(headCommitObjectId)}")
@@ -31,11 +33,22 @@ object SGit {
 
     println("\n\n")
 
-    sgit.listFileInPath(headCommitId, "Documentation/howto/").foreach(println)
-    sgit.listFileInPath(headCommitId, "Documentation/").foreach(println)
-    sgit.listFileInPath(headCommitId).foreach(println)
+    sgit.listFilesInPath(headCommitId, "Documentation/howto/").foreach(println)
+    sgit.listFilesInPath(headCommitId, "Documentation/howto").foreach(println)
+    sgit.listFilesInPath(headCommitId, "Documentation/").foreach(println)
+    */
 
+    val paths = sgit.listFilesInPath(headCommitId)
+    val headCommitObject = sgit.resolveCommit(headCommitId).get
 
+    val slow = sgit.getLastModifiedCommitFromPathsSlow(headCommitObject, paths)
+    val fast = sgit.getLastModifiedCommitFromPathsFast(headCommitObject, paths)
+
+    slow.map{ s =>
+      if(s._2 != fast.get(s._1).get) {
+        println(s"not match : ${s}, ${fast.get(s._1)}")
+      }
+    }
   }
 
   def apply(path: String): SGit = {
@@ -83,13 +96,13 @@ class SGit(path: String) {
    * @param path the path to search file list. Default . means top dir.
    * @return file list of specified commit id
    */
-  def listFileInPath(commitId: String, path: String = "."): List[String] = {
+  def listFilesInPath(commitId: String, path: String = "."): List[String] = {
     open() { git =>
       val repo = git.getRepository
       using(new TreeWalk(repo)) { tw =>
         resolveCommit(commitId) match {
           case Some(id) => tw.addTree(id.getTree)
-          case None => println("TODO throwerror? or Nil"); return Nil
+          case None => println("TODO throw error? or return Nil?"); return Nil
         }
 
         if (path != ".") {
@@ -107,7 +120,7 @@ class SGit(path: String) {
             tw.enterSubtree
             walk(walker, files)
           } else {
-            files
+            files  // not correct
           }
         }
 
@@ -151,6 +164,27 @@ class SGit(path: String) {
       if (limit > 0) log.setMaxCount(limit)
       log.call.iterator.asScala.map(_ => 1).sum
     }
+  }
+
+
+
+
+
+
+  // NOTE Too much slow version
+  def getLastModifiedCommitFromPathsSlow(commit: RevCommit, paths: List[String]): Map[String, String] = {
+    open() { git =>
+      val lastModifiedCommitMap = paths.map { path =>
+        val c = git.log.add(commit).setMaxCount(1).addPath(path).call.iterator.next
+        (path -> c.getName)
+      }
+      lastModifiedCommitMap.toMap
+    }
+  }
+
+  def getLastModifiedCommitFromPathsFast(commit: RevCommit, paths: List[String]): Map[String, String] = {
+    // TODO HELP! Write here fast version
+    getLastModifiedCommitFromPathsSlow(commit, paths)
   }
 
 }
