@@ -6,6 +6,7 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.revwalk.{RevCommit, RevWalk}
 import org.eclipse.jgit.treewalk.TreeWalk
+import org.eclipse.jgit.treewalk.filter.PathFilter
 
 import scala.collection.JavaConverters._
 
@@ -26,7 +27,15 @@ object SGit {
       println(s"${sgit.countCommit(headCommitObjectId, 0)}")
     }
 
-    sgit.listFilesInPath(headCommitId)
+    sgit.listAllFiles(headCommitId).foreach(println)
+
+    println("\n\n")
+
+    sgit.listFileInPath(headCommitId, "Documentation/howto/").foreach(println)
+    sgit.listFileInPath(headCommitId, "Documentation/").foreach(println)
+    sgit.listFileInPath(headCommitId).foreach(println)
+
+
   }
 
   def apply(path: String): SGit = {
@@ -69,26 +78,65 @@ class SGit(path: String) {
   }
 
   /**
-   * Returns file list of specified commit id
+   * Returns file list of specified commit id in path
    * @param commitId the commit id
    * @param path the path to search file list. Default . means top dir.
    * @return file list of specified commit id
    */
-  def listFilesInPath(commitId: String, path: String = "."): List[String] = {
-    // TODO
+  def listFileInPath(commitId: String, path: String = "."): List[String] = {
+    open() { git =>
+      val repo = git.getRepository
+      using(new TreeWalk(repo)) { tw =>
+        resolveCommit(commitId) match {
+          case Some(id) => tw.addTree(id.getTree)
+          case None => println("TODO throwerror? or Nil"); return Nil
+        }
+
+        if (path != ".") {
+          tw.setFilter(PathFilter.create(path))
+        }
+        val cleanPath = path.stripSuffix("/").split("/")
+        val depth = if (path != ".") cleanPath.size else 0
+
+        @scala.annotation.tailrec
+        def walk(walker: TreeWalk, files: List[String]): List[String] = {
+          if(!walker.next()) return files
+          if(depth == walker.getDepth) {
+            walk(walker, walker.getPathString :: files)
+          } else if(walker.isSubtree && walker.getNameString == cleanPath(walker.getDepth)) {
+            tw.enterSubtree
+            walk(walker, files)
+          } else {
+            files
+          }
+        }
+
+        walk(tw, List())
+      }
+    }
+  }
+
+  def listAllFiles(commitId: String, path: String = "."): List[String] = {
     open() { git =>
       val repo = git.getRepository
       using(new TreeWalk(repo)) { tw =>
         resolveCommit(commitId).map { id =>
           tw.addTree(id.getTree)
           tw.setRecursive(true)
-          while(tw.next()) {
-            println(tw.getPathString)
+        }
+
+        @scala.annotation.tailrec
+        def list(walk: TreeWalk, files: List[String]): List[String] = {
+          if (walk.next) {
+            list(walk, walk.getPathString :: files)
+          } else {
+            files
           }
         }
+
+        list(tw, List())
       }
     }
-    List("")
   }
 
   def countCommit(start: String): Option[Long] = {
