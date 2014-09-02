@@ -1,4 +1,4 @@
-package com.github.tanacasino
+package com.github.tanacasino.sgit
 
 import java.io.File
 
@@ -25,6 +25,8 @@ object SGit {
       println(s"${sgit.countCommit(headCommitObjectId)}")
       println(s"${sgit.countCommit(headCommitObjectId, 0)}")
     }
+
+    sgit.listFilesInPath(headCommitId)
   }
 
   def apply(path: String): SGit = {
@@ -72,8 +74,20 @@ class SGit(path: String) {
    * @param path the path to search file list. Default . means top dir.
    * @return file list of specified commit id
    */
-  def listFiles(commitId: String, path: String = "."): List[String] = {
+  def listFilesInPath(commitId: String, path: String = "."): List[String] = {
     // TODO
+    open() { git =>
+      val repo = git.getRepository
+      using(new TreeWalk(repo)) { tw =>
+        resolveCommit(commitId).map { id =>
+          tw.addTree(id.getTree)
+          tw.setRecursive(true)
+          while(tw.next()) {
+            println(tw.getPathString)
+          }
+        }
+      }
+    }
     List("")
   }
 
