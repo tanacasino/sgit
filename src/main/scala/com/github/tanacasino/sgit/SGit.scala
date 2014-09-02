@@ -15,8 +15,8 @@ object SGit {
 
   def main(args: Array[String]): Unit = {
     // TODO Move these codes to ScalaTest code from here.
-    val repositoryPath = if(args.size == 2) args(0) else "/Users/tanacasino/.gitbucket/repositories/root/git.git"
-    val headCommitId = if(args.size == 2) args(1) else "cd547b4886c5338a70eb8a674bfc40eac5cab3d9"
+    val repositoryPath = if(args.size >= 1) args(0) else "/Users/tanacasino/.gitbucket/repositories/root/git.git"
+    val headCommitId = if(args.size >= 2) args(1) else "cd547b4886c5338a70eb8a674bfc40eac5cab3d9"
 
     val sgit = SGit(repositoryPath)
     println(sgit.resolve(headCommitId)) // => AnyObjectId
