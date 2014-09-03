@@ -13,7 +13,8 @@ object SGitBuild extends Build {
       scalaVersion := "2.11.2",
       // add other settings here
       libraryDependencies ++= Seq(
-        "org.eclipse.jgit" % "org.eclipse.jgit" % "3.4.1.201406201815-r"
+        "org.eclipse.jgit" % "org.eclipse.jgit" % "3.4.1.201406201815-r",
+        "org.scalatest" % "scalatest_2.11" % "2.2.1" % "test"
       )
     )
   )
