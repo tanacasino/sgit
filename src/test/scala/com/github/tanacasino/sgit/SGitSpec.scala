@@ -39,7 +39,9 @@ class SGitSpec extends FlatSpec with Matchers {
     }
     */
     /*
-    4 files not match...
+    4 files not match... but this result is same as GitHub.
+    https://github.com/git/git/tree/cd547b4886c5338a70eb8a674bfc40eac5cab3d9
+
     not match: grep.c, 6bfce93e04d13ecb42008a3cf214cc892f480f0c, 634cd48a8afdd920fa26c8ec3ae43e96c82c81f2
     not match: builtin-ls-files.c, 80bffaf7fbe09ef62ecb9a6ffea70ac0171b456c, 64586e75af3c84844b80652575a8b63a9612b24a
     not match: RelNotes, 1e61b7640d09015213dbcae3564fa27ac6a8c151, 806ea701ce3624aa6a89648b6ca5d858703398cb

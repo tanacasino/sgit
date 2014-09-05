@@ -6,52 +6,13 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.revwalk.{RevCommit, RevWalk}
 import org.eclipse.jgit.treewalk.TreeWalk
-import org.eclipse.jgit.treewalk.filter.{TreeFilter, PathFilter}
+import org.eclipse.jgit.treewalk.filter.PathFilter
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 
 object SGit {
-
-  def main(args: Array[String]): Unit = {
-    // TODO Move these codes to ScalaTest code from here.
-    val repositoryPath = if(args.size >= 1) args(0) else "/Users/tanacasino/.gitbucket/repositories/root/git.git"
-    val headCommitId = if(args.size >= 2) args(1) else "cd547b4886c5338a70eb8a674bfc40eac5cab3d9"
-
-    val sgit = SGit(repositoryPath)
-    println(sgit.resolve(headCommitId)) // => AnyObjectId
-    println(sgit.resolve("hoge")) // => null
-
-    /*
-    println(s"${sgit.countCommit(headCommitId)}")
-    sgit.resolve(headCommitId).map { headCommitObjectId =>
-      println(s"${sgit.countCommit(headCommitObjectId)}")
-      println(s"${sgit.countCommit(headCommitObjectId, 0)}")
-    }
-
-    sgit.listAllFiles(headCommitId).foreach(println)
-
-    println("\n\n")
-
-    sgit.listFilesInPath(headCommitId, "Documentation/howto/").foreach(println)
-    sgit.listFilesInPath(headCommitId, "Documentation/howto").foreach(println)
-    sgit.listFilesInPath(headCommitId, "Documentation/").foreach(println)
-    */
-
-    val paths = sgit.listFilesInPath(headCommitId)
-    val headCommitObject = sgit.resolveCommit(headCommitId).get
-
-    val slow = sgit.getLastModifiedCommitFromPathsSlow(headCommitObject, paths)
-    val fast = sgit.getLastModifiedCommitFromPathsFast(headCommitObject, paths)
-
-    slow.map{ s =>
-      if(s._2 != fast.get(s._1).get) {
-        println(s"not match : ${s}, ${fast.get(s._1)}")
-      }
-    }
-  }
-
   def apply(path: String): SGit = {
     new SGit(path)
   }
@@ -167,11 +128,6 @@ class SGit(path: String) {
     }
   }
 
-
-
-
-
-
   // NOTE Too much slow version
   def getLastModifiedCommitFromPathsSlow(commit: RevCommit, paths: List[String]): Map[String, String] = {
     open() { git =>
@@ -249,13 +205,6 @@ class SGit(path: String) {
       }
       result
     }
-  }
-
-  def mismatch(a: List[FileInfo], b: List[FileInfo]): Boolean = {
-    a.forall{ fa =>
-      b.exists(fb => fb.path == fa.path && fb.objectId != fa.objectId)
-    }
-    false
   }
 
   case class FileInfo(path: String, objectId: String, objectType: String)
