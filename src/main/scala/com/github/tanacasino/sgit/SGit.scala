@@ -9,7 +9,7 @@ import org.eclipse.jgit.treewalk.TreeWalk
 import org.eclipse.jgit.treewalk.filter.PathFilter
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 
 object SGit {
@@ -147,15 +147,28 @@ class SGit(path: String) {
       val ite = git.log.add(commit).call().iterator
       var stop = false
       var result: Map[String, String] = Map()
-      val lookupPaths: ListBuffer[String] = paths.to[ListBuffer]
+      val lookupPaths: ArrayBuffer[String] = paths.to[ArrayBuffer]
+      //var commitInfoCache: Map[String, Map[String, FileInfo]] = Map()
+      val commitInfoCache = scala.collection.mutable.HashMap.empty[String, Map[String, FileInfo]]
+
+      def getCommitInfoListInCache(c: RevCommit, path: String = ".", paths: Seq[String]): Map[String, FileInfo] = {
+        if(commitInfoCache.contains(c.getId.getName)) {
+          commitInfoCache.get(c.getId.getName).get // ださいコード
+         } else {
+          val info = getCommitInfoList(c, path, paths)
+          commitInfoCache += (c.getId.getName -> info)
+          info
+        }
+      }
 
       while(ite.hasNext && !stop) {
         val c = ite.next
         if(c.getParentCount >= 2) {
           // merge commit. multiple parents
-          val base = getCommitInfoList(c)
+
+          val base = getCommitInfoListInCache(c, ".", lookupPaths)
           val parents = c.getParents.map{ parent =>
-            getCommitInfoList(parent)
+            getCommitInfoListInCache(parent, ".", lookupPaths)
           }
           var foundPaths = List[String]()
           lookupPaths.foreach { path =>
@@ -173,8 +186,8 @@ class SGit(path: String) {
           foundPaths.foreach(f => lookupPaths -= f)
         } else if (c.getParentCount == 1) {
           // not merge commit. (only one parent)
-          val base = getCommitInfoList(c)
-          val parent = getCommitInfoList(c.getParent(0))
+          val base = getCommitInfoListInCache(c, ".", lookupPaths)
+          val parent = getCommitInfoListInCache(c.getParent(0), ".", lookupPaths)
           val changes = lookupPaths.filter { path =>
             val baseInfo = base.get(path)
             val parentInfo = parent.get(path)
@@ -202,14 +215,15 @@ class SGit(path: String) {
           // found commit all paths
           stop = true
         }
+        //println(s"lookupPaths: ${lookupPaths.size}")
       }
       result
     }
   }
 
-  case class FileInfo(path: String, objectId: String, objectType: String)
+  case class FileInfo(path: String, objectId: String)
 
-  def getCommitInfoList(commit: RevCommit, path: String = "."): Map[String, FileInfo] = {
+  def getCommitInfoList(commit: RevCommit, path: String = ".", paths: Seq[String]): Map[String, FileInfo] = {
     open() { git =>
       val repo = git.getRepository
       using(new TreeWalk(repo)) { tw =>
@@ -224,8 +238,13 @@ class SGit(path: String) {
         def walk(walker: TreeWalk, files: Map[String, FileInfo]): Map[String, FileInfo] = {
           if(!walker.next()) return files
           if(depth == walker.getDepth) {
-            walk(walker,
-                 files + (walker.getPathString -> FileInfo(walker.getPathString, walker.getObjectId(0).getName, if(walker.isSubtree) "tree" else "blob")))
+            if(paths.contains(walker.getPathString)) {
+              walk(walker,
+                   files + (walker.getPathString -> FileInfo(walker.getPathString, walker.getObjectId(0).getName)))
+            } else {
+              // skip
+              walk(walker, files)
+            }
           } else if(walker.isSubtree && walker.getNameString == cleanPath(walker.getDepth)) {
             tw.enterSubtree
             walk(walker, files)

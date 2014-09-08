@@ -3,6 +3,9 @@ package com.github.tanacasino.sgit
 import collection.mutable.Stack
 import org.scalatest._
 
+import scala.compat.Platform
+import scala.util.Try
+
 class SGitSpec extends FlatSpec with Matchers {
 
   "A Stack" should "pop values in last-in-first-out order" in {
@@ -20,7 +23,7 @@ class SGitSpec extends FlatSpec with Matchers {
     }
   }
 
-  "SGit.getLatestCommits" should "returns latest commit of file" in {
+  "getLatestCommits" should "returns latest commit of every file" in {
     val repositoryPath = "/Users/tanacasino/.gitbucket/repositories/root/git.git"
     val headCommitId = "cd547b4886c5338a70eb8a674bfc40eac5cab3d9"
     val sgit = SGit(repositoryPath)
@@ -48,7 +51,16 @@ class SGitSpec extends FlatSpec with Matchers {
     not match: GIT-VERSION-GEN, 1e61b7640d09015213dbcae3564fa27ac6a8c151, 806ea701ce3624aa6a89648b6ca5d858703398cb
      */
 
-    val result = sgit.getLastModifiedCommitFromPathsFast(commit, paths)
-    result.foreach(println)
+    val fast = timeit("fast")(sgit.getLastModifiedCommitFromPathsFast(commit, paths))
+    val slow = timeit("slow")(sgit.getLastModifiedCommitFromPathsSlow(commit, paths))
+    assert(fast < slow)
+  }
+
+  def timeit[T](title: String)(f: => T): Long = {
+    val start = Platform.currentTime
+    Try(f)
+    val end = (Platform.currentTime - start) / 1000
+    println(s"$title: $end sec")
+    end
   }
 }
